@@ -1,0 +1,10 @@
+[BITS 16]
+
+section .text
+
+jmp $ ;Infinite loop
+
+times 510-($-$$) db 0
+
+db 0x55
+db 0xaa 
