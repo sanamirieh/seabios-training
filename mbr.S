@@ -22,7 +22,7 @@ print_string:
     inc si
     test al, al
     jz ret_print_string
-    jmp print_string
+    call print_string
     
 ret_print_string:
     ret
