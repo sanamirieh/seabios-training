@@ -844,7 +844,7 @@ call_boot_entry(struct segoff_s bootsegip, u8 bootdrv)
 
 // Boot from a disk (either floppy or harddrive)
 static void
-boot_disk(u8 bootdrv, int checksig)
+boot_disk(u8 bootdrv, int checksig, int mbr_signature)
 {
     u16 bootseg = 0x07c0;
 
@@ -866,8 +866,8 @@ boot_disk(u8 bootdrv, int checksig)
 
     if (checksig) {
         struct mbr_s *mbr = (void*)0;
-        if (GET_FARVAR(bootseg, mbr->signature) != MBR_SIGNATURE) {
-            printf("Boot failed: not a bootable disk\n\n");
+        if (GET_FARVAR(bootseg, mbr->signature) != mbr_signature) {
+            printf("Boot failed: not a bootable disk. found magic %02x, expected %02x\n\n", GET_FARVAR(bootseg, mbr->signature), mbr_signature);
             return;
         }
     }
@@ -949,7 +949,7 @@ boot_fail(void)
 
 // Determine next boot method and attempt a boot using it.
 static void
-do_boot(int seq_nr)
+do_boot(int seq_nr, int mbr_signature)
 {
     if (! CONFIG_BOOT)
         panic("Boot support not compiled in.\n");
@@ -962,11 +962,11 @@ do_boot(int seq_nr)
     switch (ie->type) {
     case IPL_TYPE_FLOPPY:
         printf("Booting from Floppy...\n");
-        boot_disk(0x00, CheckFloppySig);
+        boot_disk(0x00, CheckFloppySig, MBR_SIGNATURE);
         break;
     case IPL_TYPE_HARDDISK:
         printf("Booting from Hard Disk...\n");
-        boot_disk(0x80, 1);
+        boot_disk(0x80, 1, mbr_signature);
         break;
     case IPL_TYPE_CDROM:
         boot_cdrom((void*)ie->vector);
@@ -986,7 +986,8 @@ do_boot(int seq_nr)
     struct bregs br;
     memset(&br, 0, sizeof(br));
     br.flags = F_IF;
-    call16_int(0x18, &br);
+    if (mbr_signature == MBR_SIGNATURE)
+        call16_int(0x18, &br);
 }
 
 int BootSequence VARLOW = -1;
@@ -998,7 +999,7 @@ handle_18(void)
     debug_enter(NULL, DEBUG_HDL_18);
     int seq = BootSequence + 1;
     BootSequence = seq;
-    do_boot(seq);
+    do_boot(seq, MBR_SIGNATURE);
 }
 
 // INT 19h Boot Load Service Entry Point
@@ -1007,5 +1008,21 @@ handle_19(void)
 {
     debug_enter(NULL, DEBUG_HDL_19);
     BootSequence = 0;
-    do_boot(0);
+    do_boot(0, MBR_SIGNATURE);
+}
+
+void VISIBLE32FLAT
+handle_50(void)
+{
+    // my code
+    int i;
+    debug_enter(NULL, DEBUG_HDL_50);
+    dprintf(1, "My interrupt was called!!\n\n");
+    dprintf(1, "0x50 int BootSequence %d\n", BootSequence);
+    for (i = BootSequence + 1; i < BEVCount; ++i) {
+        dprintf(1, "BootSequence index %d\n", i);
+        if (i == BootSequence)
+            continue;
+        do_boot(i, 0x1111);
+    }
 }

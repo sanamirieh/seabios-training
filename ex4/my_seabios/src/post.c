@@ -60,6 +60,7 @@ ivt_init(void)
     SET_IVT(0x19, FUNC16(entry_19_official));
     SET_IVT(0x1a, FUNC16(entry_1a_official));
     SET_IVT(0x40, FUNC16(entry_40));
+    SET_IVT(0x50, FUNC16(entry_50)); // my
 
     // INT 60h-66h reserved for user interrupt
     for (i=0x60; i<=0x66; i++)
