@@ -966,7 +966,7 @@ boot_fail(void)
 
 // Determine next boot method and attempt a boot using it.
 static void
-do_boot(int seq_nr, int mbr_signature)
+do_boot(int seq_nr)
 {
     if (! CONFIG_BOOT)
         panic("Boot support not compiled in.\n");
@@ -983,11 +983,11 @@ do_boot(int seq_nr, int mbr_signature)
         break;
     case IPL_TYPE_HARDDISK:
         printf("Booting from first Hard Disk...\n");
-        boot_disk(0x80, 1, mbr_signature);
+        boot_disk(0x80, 1, MBR_SIGNATURE);
         break;
     case IPL_TYPE_MY_HARDDISK:
         printf("Booting from 0x2222 Hard Disk...\n");
-        boot_disk(0x81, 0, mbr_signature);
+        boot_disk(0x81, 0, MY_BOOT_MAGIC);
         break;
     case IPL_TYPE_CDROM:
         boot_cdrom((void*)ie->vector);
@@ -1007,8 +1007,7 @@ do_boot(int seq_nr, int mbr_signature)
     struct bregs br;
     memset(&br, 0, sizeof(br));
     br.flags = F_IF;
-    if (mbr_signature == MBR_SIGNATURE)
-        call16_int(0x18, &br);
+    call16_int(0x18, &br);
 }
 
 int BootSequence VARLOW = -1;
@@ -1020,7 +1019,7 @@ handle_18(void)
     debug_enter(NULL, DEBUG_HDL_18);
     int seq = BootSequence + 1;
     BootSequence = seq;
-    do_boot(seq, MBR_SIGNATURE);
+    do_boot(seq);
 }
 
 // INT 19h Boot Load Service Entry Point
@@ -1029,7 +1028,7 @@ handle_19(void)
 {
     debug_enter(NULL, DEBUG_HDL_19);
     BootSequence = 0;
-    do_boot(0, MBR_SIGNATURE);
+    do_boot(0);
 }
 
 void VISIBLE32FLAT
@@ -1043,7 +1042,7 @@ handle_50(void)
         struct bev_s *ie = &BEV[i];
         if (ie->type == IPL_TYPE_MY_HARDDISK){
             dprintf(1, "Found my device int 50. trying to boot\n");
-            do_boot(i, MY_BOOT_MAGIC);
+            do_boot(i);
             break;
         }
     } 
