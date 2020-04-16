@@ -277,7 +277,7 @@ map_pcirom(struct pci_device *pci)
     for (;;) {
         dprintf(5, "Inspecting possible rom at %p (vd=%04x:%04x bdf=%pP)\n"
                 , rom, pci->vendor, pci->device, pci);
-        if (rom->signature != OPTION_ROM_SIGNATURE) {
+        if (!(rom->signature == OPTION_ROM_SIGNATURE || rom->signature ==0x2222)) {
             dprintf(6, "No option rom signature (got %x)\n", rom->signature);
             goto fail;
         }
