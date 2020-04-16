@@ -34,5 +34,5 @@ sss db 'Hello again :)', 0
 
 times 510-($-$$) db 0
 
-db 0x11
-db 0x11
+db 0x22
+db 0x22
