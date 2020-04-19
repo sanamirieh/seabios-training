@@ -5,6 +5,7 @@
 //
 // This file may be distributed under the terms of the GNU LGPLv3 license.
 
+// #include "string.h"
 #include "block.h" // struct drive_s
 #include "bregs.h" // struct bregs
 #include "config.h" // CONFIG_*
@@ -21,6 +22,8 @@
 #include "string.h" // memset
 #include "util.h" // irqtimer_calc
 #include "tcgbios.h" // tpm_*
+
+#define MY_BOOT_MAGIC   0x2222
 
 /****************************************************************
  * Helper search functions
@@ -487,6 +490,7 @@ static struct hlist_head BootList VARVERIFY32INIT;
 #define IPL_TYPE_FLOPPY      0x01
 #define IPL_TYPE_HARDDISK    0x02
 #define IPL_TYPE_CDROM       0x03
+// #define IPL_TYPE_MY_HARDDISK 0x04
 #define IPL_TYPE_CBFS        0x20
 #define IPL_TYPE_BEV         0x80
 #define IPL_TYPE_BCV         0x81
@@ -806,6 +810,16 @@ bcv_prepboot(void)
             break;
         case IPL_TYPE_HARDDISK:
             map_hd_drive(pos->drive);
+            /* my frst try
+            dprintf(1, "aaaaaaaaaaaaaaaaaaa %s\n", pos->description);
+            char a[] = "ata0-1: QEMU HARDDISK ATA-7 Hard-Disk (0 MiBytes)";
+            if (!strcmp(pos->description, a)) {
+                dprintf(1, "add my second device to the list!\n");
+                add_bev(IPL_TYPE_MY_HARDDISK, 0);
+            } else{
+                dprintf(1, "add my first device to the list!\n");
+                add_bev(IPL_TYPE_HARDDISK, 0);
+            */
             add_bev(IPL_TYPE_HARDDISK, 0);
             break;
         case IPL_TYPE_CDROM:
@@ -844,7 +858,7 @@ call_boot_entry(struct segoff_s bootsegip, u8 bootdrv)
 
 // Boot from a disk (either floppy or harddrive)
 static void
-boot_disk(u8 bootdrv, int checksig)
+boot_disk(u8 bootdrv, int checksig, int mbr_signature)
 {
     u16 bootseg = 0x07c0;
 
@@ -864,10 +878,11 @@ boot_disk(u8 bootdrv, int checksig)
         return;
     }
 
+    struct mbr_s *mbr = (void*)0;
+    int x = GET_FARVAR(bootseg, mbr->signature);
     if (checksig) {
-        struct mbr_s *mbr = (void*)0;
-        if (GET_FARVAR(bootseg, mbr->signature) != MBR_SIGNATURE) {
-            printf("Boot failed: not a bootable disk\n\n");
+        if (x != mbr_signature) {
+            printf("Boot failed: not a bootable disk. found magic %02x, expected %02x\n\n", GET_FARVAR(bootseg, mbr->signature), mbr_signature);
             return;
         }
     }
@@ -962,12 +977,18 @@ do_boot(int seq_nr)
     switch (ie->type) {
     case IPL_TYPE_FLOPPY:
         printf("Booting from Floppy...\n");
-        boot_disk(0x00, CheckFloppySig);
+        boot_disk(0x00, CheckFloppySig, MBR_SIGNATURE);
         break;
     case IPL_TYPE_HARDDISK:
-        printf("Booting from Hard Disk...\n");
-        boot_disk(0x80, 1);
+        printf("Booting from first Hard Disk...\n");
+        boot_disk(0x80, 1, MBR_SIGNATURE);
         break;
+    /*
+    case IPL_TYPE_MY_HARDDISK:
+        printf("Booting from 0x2222 Hard Disk...\n");
+        boot_disk(0x81, 0, MY_BOOT_MAGIC);
+        break;
+        */
     case IPL_TYPE_CDROM:
         boot_cdrom((void*)ie->vector);
         break;
@@ -1008,4 +1029,36 @@ handle_19(void)
     debug_enter(NULL, DEBUG_HDL_19);
     BootSequence = 0;
     do_boot(0);
+}
+
+void VISIBLE32FLAT
+handle_old(void)
+{
+    // my code
+    debug_enter(NULL, DEBUG_HDL_50);
+    dprintf(1, "My interrupt 0x50 was called!!\n\n");
+    int i = BootSequence + 1;
+    for(; i < BEVCount; i++){
+        struct bev_s *ie = &BEV[i];
+        if (ie->type == IPL_TYPE_HARDDISK){
+        /*if (ie->type == IPL_TYPE_MY_HARDDISK){*/
+            dprintf(1, "Found my magical device int 50. trying to boot\n");
+            do_boot(i);
+            break;
+        }
+    } 
+}
+
+void VISIBLE32INIT
+handle_50(void)
+{
+    debug_enter(NULL, DEBUG_HDL_50);
+    struct bootentry_s *pos = NULL;
+    int i = 0;
+    hlist_for_each_entry(pos, &BootList, node) {
+        if (pos->type == IPL_TYPE_HARDDISK){
+            boot_disk(0x80 + i, 1, MY_BOOT_MAGIC);
+            i++;
+        }
+    }
 }

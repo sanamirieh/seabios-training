@@ -281,6 +281,9 @@ help: ; $(call do-kconfig, $@)
 clean:
 	$(Q)rm -rf $(OUT)
 
+test: all
+	qemu-system-i386 -drive file=../call_my_interrupt/first_bootable.bin,media=disk -drive file=../call_my_interrupt/second_bootable.bin,media=disk -bios $(target-y) -chardev stdio,id=seabios -device isa-debugcon,iobase=0x402,chardev=seabios
+
 distclean: clean
 	$(Q)rm -f .config .config.old
 

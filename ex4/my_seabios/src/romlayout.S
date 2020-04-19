@@ -181,6 +181,7 @@ __farcall16:
         IRQ_TRAMPOLINE 1b
         IRQ_TRAMPOLINE 1c
         IRQ_TRAMPOLINE 4a
+        IRQ_TRAMPOLINE 50
 
 
 /****************************************************************
@@ -580,6 +581,10 @@ entry_19:
 entry_18:
         ENTRY_INTO32 _cfunc32flat_handle_18
 
+
+        DECLFUNC entry_50
+entry_50:
+        ENTRY_INTO32 _cfunc32flat_handle_50
 
 /****************************************************************
  * Fixed position entry points
