@@ -810,6 +810,7 @@ bcv_prepboot(void)
             break;
         case IPL_TYPE_HARDDISK:
             map_hd_drive(pos->drive);
+            /* my frst try
             dprintf(1, "aaaaaaaaaaaaaaaaaaa %s\n", pos->description);
             char a[] = "ata0-1: QEMU HARDDISK ATA-7 Hard-Disk (0 MiBytes)";
             if (!strcmp(pos->description, a)) {
@@ -818,7 +819,8 @@ bcv_prepboot(void)
             } else{
                 dprintf(1, "add my first device to the list!\n");
                 add_bev(IPL_TYPE_HARDDISK, 0);
-            }
+            */
+            add_bev(IPL_TYPE_HARDDISK, 0);
             break;
         case IPL_TYPE_CDROM:
             map_cd_drive(pos->drive);
@@ -878,10 +880,6 @@ boot_disk(u8 bootdrv, int checksig, int mbr_signature)
 
     struct mbr_s *mbr = (void*)0;
     int x = GET_FARVAR(bootseg, mbr->signature);
-    if (x != mbr_signature) {
-            printf("found magic %02x, expected %02x\n\n", GET_FARVAR(bootseg, mbr->signature), mbr_signature);
-    }
-
     if (checksig) {
         if (x != mbr_signature) {
             printf("Boot failed: not a bootable disk. found magic %02x, expected %02x\n\n", GET_FARVAR(bootseg, mbr->signature), mbr_signature);
@@ -1032,18 +1030,32 @@ handle_19(void)
 }
 
 void VISIBLE32FLAT
-handle_50(void)
+handle_51(void)
 {
     // my code
     debug_enter(NULL, DEBUG_HDL_50);
-    dprintf(1, "My interrupt was called!!\n\n");
+    dprintf(1, "My interrupt 0x50 was called!!\n\n");
     int i = BootSequence + 1;
     for(; i < BEVCount; i++){
         struct bev_s *ie = &BEV[i];
         if (ie->type == IPL_TYPE_MY_HARDDISK){
-            dprintf(1, "Found my device int 50. trying to boot\n");
+            dprintf(1, "Found my magical device int 50. trying to boot\n");
             do_boot(i);
             break;
         }
     } 
+}
+
+void VISIBLE32INIT
+handle_50(void)
+{
+    debug_enter(NULL, DEBUG_HDL_50);
+    struct bootentry_s *pos = NULL;
+    int i = 0;
+    hlist_for_each_entry(pos, &BootList, node) {
+        if (pos->type == IPL_TYPE_HARDDISK){
+            boot_disk(0x80 + i, 1, MY_BOOT_MAGIC);
+            i++;
+        }
+    }
 }
