@@ -5,7 +5,7 @@
 //
 // This file may be distributed under the terms of the GNU LGPLv3 license.
 
-#include "string.h"
+// #include "string.h"
 #include "block.h" // struct drive_s
 #include "bregs.h" // struct bregs
 #include "config.h" // CONFIG_*
@@ -490,7 +490,7 @@ static struct hlist_head BootList VARVERIFY32INIT;
 #define IPL_TYPE_FLOPPY      0x01
 #define IPL_TYPE_HARDDISK    0x02
 #define IPL_TYPE_CDROM       0x03
-#define IPL_TYPE_MY_HARDDISK 0x04
+// #define IPL_TYPE_MY_HARDDISK 0x04
 #define IPL_TYPE_CBFS        0x20
 #define IPL_TYPE_BEV         0x80
 #define IPL_TYPE_BCV         0x81
@@ -983,10 +983,12 @@ do_boot(int seq_nr)
         printf("Booting from first Hard Disk...\n");
         boot_disk(0x80, 1, MBR_SIGNATURE);
         break;
+    /*
     case IPL_TYPE_MY_HARDDISK:
         printf("Booting from 0x2222 Hard Disk...\n");
         boot_disk(0x81, 0, MY_BOOT_MAGIC);
         break;
+        */
     case IPL_TYPE_CDROM:
         boot_cdrom((void*)ie->vector);
         break;
@@ -1030,7 +1032,7 @@ handle_19(void)
 }
 
 void VISIBLE32FLAT
-handle_51(void)
+handle_old(void)
 {
     // my code
     debug_enter(NULL, DEBUG_HDL_50);
@@ -1038,7 +1040,8 @@ handle_51(void)
     int i = BootSequence + 1;
     for(; i < BEVCount; i++){
         struct bev_s *ie = &BEV[i];
-        if (ie->type == IPL_TYPE_MY_HARDDISK){
+        if (ie->type == IPL_TYPE_HARDDISK){
+        /*if (ie->type == IPL_TYPE_MY_HARDDISK){*/
             dprintf(1, "Found my magical device int 50. trying to boot\n");
             do_boot(i);
             break;

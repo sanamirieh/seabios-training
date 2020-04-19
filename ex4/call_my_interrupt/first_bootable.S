@@ -31,7 +31,7 @@ exit:
 	int 0x50
     jmp $ ;Infinite loop
     
-sss db 'Calling my interrupt!', 0
+sss db 'Calling my interrupt!', 10
 
 times 510-($-$$) db 0
 
